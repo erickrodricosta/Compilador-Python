@@ -100,68 +100,66 @@ public class Lexer {
     }
 
     // Método principal que retorna o próximo token
+    // Adicione/Substitua este método na classe Lexer
     public Token nextToken() {
         while (currentChar != '\0') {
 
             // 1. Tratamento de Comentários """ ... """
             if (currentChar == '"' && peek() == '"' && peekWait() == '"') {
-                // Consome a abertura """
                 advance(); advance(); advance();
-
-                // Consome tudo até encontrar o fechamento """
                 while (currentChar != '\0') {
                     if (currentChar == '"' && peek() == '"' && peekWait() == '"') {
-                        advance(); advance(); advance(); // Consome o fechamento
+                        advance(); advance(); advance();
                         break;
                     }
                     if (currentChar == '\n') line++;
                     advance();
                 }
-                continue; // Volta pro loop para pegar o próximo token real
+                continue;
             }
 
-            // 2. Tabulação (Token TAB)
+            // 2. Tabulação Real (\t)
             if (currentChar == '\t') {
                 advance();
                 return new Token(TokenType.TAB, "\\t", line);
             }
 
-            // Espaços em branco (exceto TAB) são ignorados
+            // 3. NOVA LÓGICA: Tabulação com Espaços (Soft Tab)
+            // Se encontrar 2 ou mais espaços seguidos, considera como TAB
+            if (currentChar == ' ' && peek() == ' ') {
+                // Consome todos os espaços contínuos
+                while (currentChar == ' ') {
+                    advance();
+                }
+                return new Token(TokenType.TAB, "  ", line);
+            }
+
+            // 4. Quebras de linha e espaços simples
+            // Espaços únicos são ignorados, quebras de linha incrementam contador
             if (Character.isWhitespace(currentChar)) {
-                skipWhitespace();
+                if (currentChar == '\n') {
+                    line++;
+                }
+                advance();
                 continue;
             }
 
-            // 3. Números
+            // 5. Números
             if (Character.isDigit(currentChar)) {
                 return readNumber();
             }
 
-            // 4. Identificadores e Palavras Reservadas
+            // 6. Identificadores e Palavras Reservadas
             if (Character.isLetter(currentChar)) {
                 return readIdentifier();
             }
 
-            // 5. Operadores e Pontuação
-            // Operadores duplos (==, !=, >=, <=)
-            if (currentChar == '=' && peek() == '=') {
-                advance(); advance();
-                return new Token(TokenType.EQUALS, "==", line);
-            }
-            if (currentChar == '!' && peek() == '=') {
-                advance(); advance();
-                return new Token(TokenType.DIFF, "!=", line);
-            }
-            if (currentChar == '>' && peek() == '=') {
-                advance(); advance();
-                return new Token(TokenType.GREATER_EQ, ">=", line);
-            }
-            if (currentChar == '<' && peek() == '=') {
-                advance(); advance();
-                return new Token(TokenType.LESS_EQ, "<=", line);
-            }
+            // 7. Operadores e Pontuação (Igual ao anterior)
+            if (currentChar == '=' && peek() == '=') { advance(); advance(); return new Token(TokenType.EQUALS, "==", line); }
+            if (currentChar == '!' && peek() == '=') { advance(); advance(); return new Token(TokenType.DIFF, "!=", line); }
+            if (currentChar == '>' && peek() == '=') { advance(); advance(); return new Token(TokenType.GREATER_EQ, ">=", line); }
+            if (currentChar == '<' && peek() == '=') { advance(); advance(); return new Token(TokenType.LESS_EQ, "<=", line); }
 
-            // Caracteres simples
             switch (currentChar) {
                 case '+': advance(); return new Token(TokenType.PLUS, "+", line);
                 case '-': advance(); return new Token(TokenType.MINUS, "-", line);
@@ -175,7 +173,6 @@ public class Lexer {
                 case '>': advance(); return new Token(TokenType.GREATER, ">", line);
                 case '<': advance(); return new Token(TokenType.LESS, "<", line);
                 default:
-                    // Erro léxico
                     System.err.println("Caractere inesperado na linha " + line + ": " + currentChar);
                     advance();
                     return new Token(TokenType.UNKNOWN, String.valueOf(currentChar), line);
