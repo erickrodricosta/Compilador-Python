@@ -70,8 +70,4 @@ public class TabelaSimbolos {
     public Integer obterEnderecoFuncao(String nome) {
         return tabelaFuncoes.get(nome);
     }
-
-    public boolean contemVariavel(String nome) {
-        return (dentroDeFuncao && tabelaLocal.containsKey(nome)) || tabelaGlobal.containsKey(nome);
-    }
 }
