@@ -57,6 +57,15 @@ public class TabelaSimbolos {
         return null; // Não encontrada
     }
 
+    // Verifica se a variável existe NO ESCOPO ATUAL (se for função, olha só local)
+    public boolean existeNoEscopoAtual(String nome) {
+        if (dentroDeFuncao) {
+            return tabelaLocal.containsKey(nome);
+        } else {
+            return tabelaGlobal.containsKey(nome);
+        }
+    }
+
     public void registrarFuncao(String nome, int endereco) {
         tabelaFuncoes.put(nome, endereco);
     }

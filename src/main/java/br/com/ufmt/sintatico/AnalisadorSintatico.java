@@ -246,13 +246,17 @@ public class AnalisadorSintatico {
         if (tokenAtual.tipo == TipoToken.ATRIBUICAO) {
             consumirToken(TipoToken.ATRIBUICAO);
 
-            if (!tabelaSimbolos.contemVariavel(nome)) {
+            // CORREÇÃO DE SHADOWING:
+            // Se for atribuição, verificamos se existe no escopo ATUAL.
+            // Se não existir (mesmo que exista global), criamos uma nova nesse escopo.
+            if (!tabelaSimbolos.existeNoEscopoAtual(nome)) {
                 tabelaSimbolos.adicionarVariavel(nome);
                 geradorCodigo.gerarInstrucao("ALME", 1);
             }
 
             analisarExpressao();
 
+            // Agora a busca vai priorizar a local que acabamos de criar (se for o caso)
             int[] info = tabelaSimbolos.obterInfoVariavel(nome);
             if (info[1] == 1) {
                 geradorCodigo.gerarInstrucao("AMREL", info[0]);
