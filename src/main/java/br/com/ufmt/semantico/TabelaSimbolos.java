@@ -16,15 +16,15 @@ public class TabelaSimbolos {
         this.tabelaGlobal = new HashMap<>();
         this.tabelaLocal = new HashMap<>();
         this.tabelaFuncoes = new HashMap<>();
-        this.proximoEnderecoGlobal = 0; // Começa do 0
+        this.proximoEnderecoGlobal = 0;
         this.proximoEnderecoLocal = 0;
         this.dentroDeFuncao = false;
     }
 
     public void entrarEscopoFuncao() {
         this.dentroDeFuncao = true;
-        this.proximoEnderecoLocal = 0; // Reinicia contagem para a nova função
-        this.tabelaLocal.clear();      // Limpa variáveis da função anterior
+        this.proximoEnderecoLocal = 0;
+        this.tabelaLocal.clear();
     }
 
     public void sairEscopoFuncao() {
@@ -45,19 +45,16 @@ public class TabelaSimbolos {
         }
     }
 
-    // Retorna um array: [endereço, escopo]
-    // escopo: 0 = Global, 1 = Local
     public int[] obterInfoVariavel(String nome) {
         if (dentroDeFuncao && tabelaLocal.containsKey(nome)) {
-            return new int[]{tabelaLocal.get(nome), 1}; // 1 = Local
+            return new int[]{tabelaLocal.get(nome), 1};
         }
         if (tabelaGlobal.containsKey(nome)) {
-            return new int[]{tabelaGlobal.get(nome), 0}; // 0 = Global
+            return new int[]{tabelaGlobal.get(nome), 0};
         }
-        return null; // Não encontrada
+        return null;
     }
 
-    // Verifica se a variável existe NO ESCOPO ATUAL (se for função, olha só local)
     public boolean existeNoEscopoAtual(String nome) {
         if (dentroDeFuncao) {
             return tabelaLocal.containsKey(nome);

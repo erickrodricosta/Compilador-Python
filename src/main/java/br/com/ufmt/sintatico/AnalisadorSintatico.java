@@ -23,8 +23,6 @@ public class AnalisadorSintatico {
         this.tokenAtual = analisadorLexico.obterProximoToken();
     }
 
-    // === Métodos Auxiliares ===
-
     private void consumirToken(TipoToken tipo) {
         if (tokenAtual.tipo == tipo) {
             tokenAtual = analisadorLexico.obterProximoToken();
@@ -44,8 +42,6 @@ public class AnalisadorSintatico {
                 tipo == TipoToken.IDENTIFICADOR;
     }
 
-    // === Regras Gramaticais: Estrutura Geral ===
-
     public void analisarPrograma() {
         geradorCodigo.gerarInstrucao("INPP");
         analisarCorpo();
@@ -63,7 +59,6 @@ public class AnalisadorSintatico {
                 analisarDeclaracaoFuncao();
             }
             else if (tokenAtual.tipo == TipoToken.IDENTIFICADOR) {
-                // Se o identificador já é uma função conhecida, paramos as declarações
                 if (tabelaSimbolos.obterEnderecoFuncao(tokenAtual.lexema) != null) {
                     break;
                 }
@@ -82,16 +77,13 @@ public class AnalisadorSintatico {
         consumirToken(TipoToken.ATRIBUICAO);
         analisarExpressao();
 
-        // Verifica escopo para decidir entre Local (AMREL) ou Global (ARMZ)
         int[] info = tabelaSimbolos.obterInfoVariavel(nomeVariavel);
-        if (info[1] == 1) { // 1 = Local
+        if (info[1] == 1) {
             geradorCodigo.gerarInstrucao("AMREL", info[0]);
-        } else { // 0 = Global
+        } else {
             geradorCodigo.gerarInstrucao("ARMZ", info[0]);
         }
     }
-
-    // === Regras Gramaticais: Funções ===
 
     private void analisarDeclaracaoFuncao() {
         consumirToken(TipoToken.DEF);
@@ -101,8 +93,8 @@ public class AnalisadorSintatico {
         int indiceDesvio = geradorCodigo.gerarInstrucao("DSVI", 0);
         tabelaSimbolos.registrarFuncao(nomeFuncao, geradorCodigo.obterEnderecoAtual());
 
-        tabelaSimbolos.entrarEscopoFuncao(); // Inicia escopo local
-        geradorCodigo.gerarInstrucao("ENPR");        // Cria stack frame na VM
+        tabelaSimbolos.entrarEscopoFuncao();
+        geradorCodigo.gerarInstrucao("ENPR");
 
         consumirToken(TipoToken.PARENTESES_ESQ);
         List<Integer> enderecosParams = new ArrayList<>();
@@ -110,7 +102,6 @@ public class AnalisadorSintatico {
         consumirToken(TipoToken.PARENTESES_DIR);
         consumirToken(TipoToken.DOIS_PONTOS);
 
-        // Desempilha parâmetros (LIFO) para variáveis locais
         Collections.reverse(enderecosParams);
         for (Integer endereco : enderecosParams) {
             geradorCodigo.gerarInstrucao("AMREL", endereco);
@@ -118,7 +109,7 @@ public class AnalisadorSintatico {
 
         analisarBloco();
 
-        tabelaSimbolos.sairEscopoFuncao(); // Volta para escopo global
+        tabelaSimbolos.sairEscopoFuncao();
 
         geradorCodigo.gerarInstrucao("RTPR");
         geradorCodigo.atualizarEnderecoDesvio(indiceDesvio, geradorCodigo.obterEnderecoAtual());
@@ -129,7 +120,6 @@ public class AnalisadorSintatico {
             String nomeVar = tokenAtual.lexema;
             consumirToken(TipoToken.IDENTIFICADOR);
 
-            // Adiciona variável ao escopo local
             int endereco = tabelaSimbolos.adicionarVariavel(nomeVar);
             enderecosParams.add(endereco);
 
@@ -144,15 +134,12 @@ public class AnalisadorSintatico {
         }
     }
 
-    // === Regras Gramaticais: Comandos e Blocos ===
-
     private void analisarBloco() {
         consumirToken(TipoToken.TABULACAO);
         analisarComandos(true);
     }
 
     private void analisarComandos(boolean dentroDeBloco) {
-        // Consome linhas vazias/comentários iniciais
         while (tokenAtual.tipo == TipoToken.TABULACAO) {
             consumirToken(TipoToken.TABULACAO);
             if (tokenAtual.tipo == TipoToken.FIM_ARQUIVO || tokenAtual.tipo == TipoToken.ELSE) {
@@ -182,15 +169,13 @@ public class AnalisadorSintatico {
                 if (verificarSeEComando(tokenAtual.tipo)) {
                     analisarComandos(true);
                 }
-                // Recursão para pular linhas vazias/comentários no meio do bloco
                 else if (tokenAtual.tipo == TipoToken.TABULACAO) {
                     analisarMaisComandos(true);
                 }
             } else {
-                return; // Dedent (fim do bloco)
+                return;
             }
         } else {
-            // No Main (Escopo Global)
             if (verificarSeEComando(tokenAtual.tipo)) {
                 analisarComandos(false);
             }
@@ -211,15 +196,14 @@ public class AnalisadorSintatico {
             consumirToken(TipoToken.PARENTESES_ESQ);
 
             String nomeVar = tokenAtual.lexema;
-            consumirToken(TipoToken.IDENTIFICADOR); // Validação estrita LALG (só aceita variáveis)
+            consumirToken(TipoToken.IDENTIFICADOR);
 
-            // Gera carregamento da variável
             int[] info = tabelaSimbolos.obterInfoVariavel(nomeVar);
             if (info == null) lancarErroSintatico("Variavel nao declarada: " + nomeVar);
 
-            if (info[1] == 1) { // Local
+            if (info[1] == 1) {
                 geradorCodigo.gerarInstrucao("CREL", info[0]);
-            } else { // Global
+            } else {
                 geradorCodigo.gerarInstrucao("CRVL", info[0]);
             }
 
@@ -246,9 +230,6 @@ public class AnalisadorSintatico {
         if (tokenAtual.tipo == TipoToken.ATRIBUICAO) {
             consumirToken(TipoToken.ATRIBUICAO);
 
-            // CORREÇÃO DE SHADOWING:
-            // Se for atribuição, verificamos se existe no escopo ATUAL.
-            // Se não existir (mesmo que exista global), criamos uma nova nesse escopo.
             if (!tabelaSimbolos.existeNoEscopoAtual(nome)) {
                 tabelaSimbolos.adicionarVariavel(nome);
                 geradorCodigo.gerarInstrucao("ALME", 1);
@@ -256,7 +237,6 @@ public class AnalisadorSintatico {
 
             analisarExpressao();
 
-            // Agora a busca vai priorizar a local que acabamos de criar (se for o caso)
             int[] info = tabelaSimbolos.obterInfoVariavel(nome);
             if (info[1] == 1) {
                 geradorCodigo.gerarInstrucao("AMREL", info[0]);
@@ -281,8 +261,6 @@ public class AnalisadorSintatico {
             geradorCodigo.atualizarEnderecoDesvio(indiceParam, geradorCodigo.obterEnderecoAtual());
         }
     }
-
-    // === Expressões ===
 
     private void analisarCondicao() {
         analisarExpressao();

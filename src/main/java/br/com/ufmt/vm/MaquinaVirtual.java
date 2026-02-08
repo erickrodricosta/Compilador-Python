@@ -6,14 +6,14 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public class MaquinaVirtual {
-    private List<String> instrucoes;       // O código carregado
-    private Stack<Double> pilhaOperandos;  // Pilha de dados
-    private ArrayList<Double> memoriaDados;// Memória de variáveis globais e locais
-    private int ponteiroInstrucao;         // IP (Instruction Pointer)
+    private List<String> instrucoes;
+    private Stack<Double> pilhaOperandos;
+    private ArrayList<Double> memoriaDados;
+    private int ponteiroInstrucao;
     private boolean executando;
 
-    private int ponteiroQuadroExecucao;    // FP (Frame Pointer) - Início das variáveis da função
-    private Stack<Integer> pilhaChamadas;  // Salva o FP antigo para restaurar depois
+    private int ponteiroQuadroExecucao;
+    private Stack<Integer> pilhaChamadas;
 
     public MaquinaVirtual() {
         this.pilhaOperandos = new Stack<>();
@@ -49,29 +49,28 @@ public class MaquinaVirtual {
 
             try {
                 switch (operacao) {
-                    case "INPP": // Iniciar Programa
+                    case "INPP":
                         ponteiroInstrucao++;
                         break;
 
-                    case "PARA": // Parar Programa
+                    case "PARA":
                         executando = false;
                         break;
 
-                    case "ALME": // Alocar Memória
+                    case "ALME":
                         memoriaDados.add(0.0);
                         ponteiroInstrucao++;
                         break;
 
-                    case "CRCT": // Carrega Constante
+                    case "CRCT":
                         double valorConstante = Double.parseDouble(partes[1]);
                         pilhaOperandos.push(valorConstante);
                         ponteiroInstrucao++;
                         break;
 
-                    case "ARMZ": // Armazena (Global)
+                    case "ARMZ":
                         int enderecoGlobal = Integer.parseInt(partes[1]);
                         Double valorArmz = pilhaOperandos.pop();
-                        // Garante espaço se necessário
                         if (enderecoGlobal >= memoriaDados.size()) {
                             while (memoriaDados.size() <= enderecoGlobal) memoriaDados.add(0.0);
                         }
@@ -79,25 +78,23 @@ public class MaquinaVirtual {
                         ponteiroInstrucao++;
                         break;
 
-                    case "CRVL": // Carrega Valor (Global)
+                    case "CRVL":
                         int endGlobalCarregar = Integer.parseInt(partes[1]);
                         pilhaOperandos.push(memoriaDados.get(endGlobalCarregar));
                         ponteiroInstrucao++;
                         break;
 
-                    case "CREL": // Carrega Relativo (Local)
+                    case "CREL":
                         int deslocamentoLoad = Integer.parseInt(partes[1]);
-                        // Pega do FP + deslocamento
                         pilhaOperandos.push(memoriaDados.get(ponteiroQuadroExecucao + deslocamentoLoad));
                         ponteiroInstrucao++;
                         break;
 
-                    case "AMREL": // Armazena Relativo (Local)
+                    case "AMREL":
                         int deslocamentoStore = Integer.parseInt(partes[1]);
                         Double valorStore = pilhaOperandos.pop();
                         int enderecoReal = ponteiroQuadroExecucao + deslocamentoStore;
 
-                        // Garante que a memória cresceu o suficiente
                         while (memoriaDados.size() <= enderecoReal) {
                             memoriaDados.add(0.0);
                         }
@@ -129,91 +126,85 @@ public class MaquinaVirtual {
                         ponteiroInstrucao++;
                         break;
 
-                    case "IMPR": // Imprimir
+                    case "IMPR":
                         System.out.println("SAIDA: " + pilhaOperandos.pop());
                         ponteiroInstrucao++;
                         break;
 
-                    case "LEIT": // Ler Input
+                    case "LEIT":
                         System.out.print("ENTRADA: ");
                         double inputVal = leitor.nextDouble();
                         pilhaOperandos.push(inputVal);
                         ponteiroInstrucao++;
                         break;
 
-                    // === Desvios ===
-                    case "DSVI": // Desvio Incondicional
+                    case "DSVI":
                         ponteiroInstrucao = Integer.parseInt(partes[1]);
                         break;
 
-                    case "DSVF": // Desvio Se Falso
+                    case "DSVF":
                         int destinoSalto = Integer.parseInt(partes[1]);
                         double condicao = pilhaOperandos.pop();
-                        if (condicao == 0.0) { // Falso
+                        if (condicao == 0.0) {
                             ponteiroInstrucao = destinoSalto;
                         } else {
                             ponteiroInstrucao++;
                         }
                         break;
 
-                    // === Comparadores (Retornam 1.0 ou 0.0) ===
-                    case "CMIG": // ==
+                    case "CMIG":
                         pilhaOperandos.push(pilhaOperandos.pop().equals(pilhaOperandos.pop()) ? 1.0 : 0.0);
                         ponteiroInstrucao++;
                         break;
-                    case "CMDG": // !=
+                    case "CMDG":
                         pilhaOperandos.push(!pilhaOperandos.pop().equals(pilhaOperandos.pop()) ? 1.0 : 0.0);
                         ponteiroInstrucao++;
                         break;
-                    case "CMAI": // >=
+                    case "CMAI":
                         double valB = pilhaOperandos.pop();
                         double valA = pilhaOperandos.pop();
                         pilhaOperandos.push(valA >= valB ? 1.0 : 0.0);
                         ponteiroInstrucao++;
                         break;
-                    case "CPMI": // <=
+                    case "CPMI":
                         double vB = pilhaOperandos.pop();
                         double vA = pilhaOperandos.pop();
                         pilhaOperandos.push(vA <= vB ? 1.0 : 0.0);
                         ponteiroInstrucao++;
                         break;
-                    case "CMMA": // >
+                    case "CMMA":
                         double vb2 = pilhaOperandos.pop();
                         double va2 = pilhaOperandos.pop();
                         pilhaOperandos.push(va2 > vb2 ? 1.0 : 0.0);
                         ponteiroInstrucao++;
                         break;
-                    case "CMME": // <
+                    case "CMME":
                         double vb3 = pilhaOperandos.pop();
                         double va3 = pilhaOperandos.pop();
                         pilhaOperandos.push(va3 < vb3 ? 1.0 : 0.0);
                         ponteiroInstrucao++;
                         break;
 
-                    // === Funções ===
-                    case "PUSHER": // Empilha endereço de retorno (placeholder atualizado depois)
+                    case "PUSHER":
                         pilhaOperandos.push(Double.parseDouble(partes[1]));
                         ponteiroInstrucao++;
                         break;
 
-                    case "CHPR": // Chamada de Procedimento
+                    case "CHPR":
                         ponteiroInstrucao = Integer.parseInt(partes[1]);
                         break;
 
-                    case "ENPR": // Entrar em Procedimento
-                        pilhaChamadas.push(ponteiroQuadroExecucao); // Salva FP antigo
-                        ponteiroQuadroExecucao = memoriaDados.size(); // Novo FP é o topo da memória
+                    case "ENPR":
+                        pilhaChamadas.push(ponteiroQuadroExecucao);
+                        ponteiroQuadroExecucao = memoriaDados.size();
                         ponteiroInstrucao++;
                         break;
 
-                    case "RTPR": // Retornar de Procedimento
-                        // 1. Limpa memória local
+                    case "RTPR":
                         while (memoriaDados.size() > ponteiroQuadroExecucao) {
                             memoriaDados.remove(memoriaDados.size() - 1);
                         }
-                        // 2. Restaura FP
                         ponteiroQuadroExecucao = pilhaChamadas.pop();
-                        // 3. Pega endereço de retorno da pilha de dados
                         int enderecoRetorno = pilhaOperandos.pop().intValue();
                         ponteiroInstrucao = enderecoRetorno;
                         break;

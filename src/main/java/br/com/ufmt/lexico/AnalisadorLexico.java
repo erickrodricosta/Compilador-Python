@@ -2,8 +2,8 @@ package br.com.ufmt.lexico;
 
 public class AnalisadorLexico {
     private String conteudoArquivo;
-    private int posicaoAtual;        // Posição atual no arquivo (char)
-    private int linha;               // Linha atual (para debug)
+    private int posicaoAtual;
+    private int linha;
     private char caractereAtual;
 
     public AnalisadorLexico(String conteudoArquivo) {
@@ -18,17 +18,15 @@ public class AnalisadorLexico {
         }
     }
 
-    // Avança para o próximo caractere
     private void avancarCaractere() {
         posicaoAtual++;
         if (posicaoAtual < conteudoArquivo.length()) {
             caractereAtual = conteudoArquivo.charAt(posicaoAtual);
         } else {
-            caractereAtual = '\0'; // Indica fim do arquivo
+            caractereAtual = '\0';
         }
     }
 
-    // Olha o próximo caractere sem avançar (Lookahead 1)
     private char espiarProximoCaractere() {
         if (posicaoAtual + 1 < conteudoArquivo.length()) {
             return conteudoArquivo.charAt(posicaoAtual + 1);
@@ -36,7 +34,6 @@ public class AnalisadorLexico {
         return '\0';
     }
 
-    // Olha dois caracteres à frente (Lookahead 2 - usado para """ ou ==)
     private char espiarDoisCaracteresFrente() {
         if (posicaoAtual + 2 < conteudoArquivo.length()) {
             return conteudoArquivo.charAt(posicaoAtual + 2);
@@ -44,7 +41,6 @@ public class AnalisadorLexico {
         return '\0';
     }
 
-    // Lê identificadores (variaveis) ou palavras reservadas (if, while...)
     private Token lerIdentificador() {
         StringBuilder sb = new StringBuilder();
         while (Character.isLetterOrDigit(caractereAtual) || caractereAtual == '_') {
@@ -53,24 +49,20 @@ public class AnalisadorLexico {
         }
         String texto = sb.toString();
 
-        // Verifica se é palavra reservada percorrendo o Enum
         for (TipoToken t : TipoToken.values()) {
             if (t.matchString != null && t.matchString.equals(texto)) {
                 return new Token(t, texto, linha);
             }
         }
-        // Se não for reservada, é identificador comum
         return new Token(TipoToken.IDENTIFICADOR, texto, linha);
     }
 
-    // Lê números (inteiros ou reais)
     private Token lerNumero() {
         StringBuilder sb = new StringBuilder();
         while (Character.isDigit(caractereAtual)) {
             sb.append(caractereAtual);
             avancarCaractere();
         }
-        // Se tiver ponto, é número real (float/double)
         if (caractereAtual == '.') {
             sb.append(caractereAtual);
             avancarCaractere();
@@ -82,11 +74,9 @@ public class AnalisadorLexico {
         return new Token(TipoToken.NUMERO, sb.toString(), linha);
     }
 
-    // Método principal que retorna o próximo token
     public Token obterProximoToken() {
         while (caractereAtual != '\0') {
 
-            // 1. Tratamento de Comentários """ ... """
             if (caractereAtual == '"' && espiarProximoCaractere() == '"' && espiarDoisCaracteresFrente() == '"') {
                 avancarCaractere(); avancarCaractere(); avancarCaractere();
                 while (caractereAtual != '\0') {
@@ -100,13 +90,11 @@ public class AnalisadorLexico {
                 continue;
             }
 
-            // 2. Tabulação Real (\t)
             if (caractereAtual == '\t') {
                 avancarCaractere();
                 return new Token(TipoToken.TABULACAO, "\\t", linha);
             }
 
-            // 3. Tabulação com Espaços (Soft Tab - 2 espaços)
             if (caractereAtual == ' ' && espiarProximoCaractere() == ' ') {
                 while (caractereAtual == ' ') {
                     avancarCaractere();
@@ -114,7 +102,6 @@ public class AnalisadorLexico {
                 return new Token(TipoToken.TABULACAO, "  ", linha);
             }
 
-            // 4. Quebras de linha e espaços simples (ignorados)
             if (Character.isWhitespace(caractereAtual)) {
                 if (caractereAtual == '\n') {
                     linha++;
@@ -123,17 +110,14 @@ public class AnalisadorLexico {
                 continue;
             }
 
-            // 5. Números
             if (Character.isDigit(caractereAtual)) {
                 return lerNumero();
             }
 
-            // 6. Identificadores e Palavras Reservadas
             if (Character.isLetter(caractereAtual)) {
                 return lerIdentificador();
             }
 
-            // 7. Operadores e Pontuação
             if (caractereAtual == '=' && espiarProximoCaractere() == '=') {
                 avancarCaractere(); avancarCaractere();
                 return new Token(TipoToken.IGUAL, "==", linha);
@@ -151,7 +135,6 @@ public class AnalisadorLexico {
                 return new Token(TipoToken.MENOR_IGUAL, "<=", linha);
             }
 
-            // Caracteres únicos
             switch (caractereAtual) {
                 case '+': avancarCaractere(); return new Token(TipoToken.SOMA, "+", linha);
                 case '-': avancarCaractere(); return new Token(TipoToken.SUBTRACAO, "-", linha);
