@@ -10,6 +10,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+/**
+ * Classe principal que orquestra as etapas de compilação e execução.
+ * 1. Análise Léxica, Sintática e Semântica.
+ * 2. Geração de Código Objeto.
+ * 3. Execução na Máquina Virtual.
+ */
 public class Main {
     public static void main(String[] args) {
         try {

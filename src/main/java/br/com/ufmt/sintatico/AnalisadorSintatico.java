@@ -10,12 +10,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Realiza a Análise Sintática Descendente Recursiva do código fonte.
+ * Verifica se a sequência de tokens obedece à gramática da linguagem e coordena
+ * a análise semântica e geração de código.
+ */
 public class AnalisadorSintatico {
     private AnalisadorLexico analisadorLexico;
     private TabelaSimbolos tabelaSimbolos;
     private GeradorCodigo geradorCodigo;
     private Token tokenAtual;
 
+    /**
+     * Inicializa o analisador sintático.
+     * @param analisadorLexico Fonte dos tokens.
+     * @param tabelaSimbolos Gerenciador de contexto.
+     * @param geradorCodigo Emissor de código objeto.
+     */
     public AnalisadorSintatico(AnalisadorLexico analisadorLexico, TabelaSimbolos tabelaSimbolos, GeradorCodigo geradorCodigo) {
         this.analisadorLexico = analisadorLexico;
         this.tabelaSimbolos = tabelaSimbolos;
@@ -23,6 +34,11 @@ public class AnalisadorSintatico {
         this.tokenAtual = analisadorLexico.obterProximoToken();
     }
 
+    /**
+     * Verifica se o token atual é do tipo esperado e avança para o próximo.
+     * Caso contrário, lança um erro sintático.
+     * @param tipo Tipo de token esperado.
+     */
     private void consumirToken(TipoToken tipo) {
         if (tokenAtual.tipo == tipo) {
             tokenAtual = analisadorLexico.obterProximoToken();
@@ -31,10 +47,19 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Lança uma exceção de erro sintático formatada com a linha atual.
+     * @param mensagem Descrição do erro encontrado.
+     */
     private void lancarErroSintatico(String mensagem) {
         throw new RuntimeException("Erro de Sintaxe na linha " + tokenAtual.linha + ": " + mensagem);
     }
 
+    /**
+     * Verifica se o tipo do token corresponde ao início de um comando válido.
+     * @param tipo O tipo do token a ser verificado.
+     * @return true se for PRINT, IF, WHILE ou IDENTIFICADOR; false caso contrário.
+     */
     private boolean verificarSeEComando(TipoToken tipo) {
         return tipo == TipoToken.PRINT ||
                 tipo == TipoToken.IF ||
@@ -42,23 +67,36 @@ public class AnalisadorSintatico {
                 tipo == TipoToken.IDENTIFICADOR;
     }
 
+    /**
+     * Regra inicial da gramática. Analisa o programa completo.
+     * Gera as instruções de início (INPP) e fim (PARA).
+     */
     public void analisarPrograma() {
         geradorCodigo.gerarInstrucao("INPP");
         analisarCorpo();
         geradorCodigo.gerarInstrucao("PARA");
     }
 
+    /**
+     * Analisa o corpo do programa, composto por declarações (variáveis/funções)
+     * seguidas pelos comandos do bloco principal.
+     */
     private void analisarCorpo() {
         analisarDeclaracoes();
         analisarComandos(false);
     }
 
+    /**
+     * Processa a sequência de declarações de variáveis globais e funções.
+     * Identifica se é uma função (DEF) ou variável (IDENT) e chama o método apropriado.
+     */
     private void analisarDeclaracoes() {
         while (tokenAtual.tipo == TipoToken.IDENTIFICADOR || tokenAtual.tipo == TipoToken.DEF) {
             if (tokenAtual.tipo == TipoToken.DEF) {
                 analisarDeclaracaoFuncao();
             }
             else if (tokenAtual.tipo == TipoToken.IDENTIFICADOR) {
+                // Se o identificador já é uma função conhecida, paramos as declarações (início do main)
                 if (tabelaSimbolos.obterEnderecoFuncao(tokenAtual.lexema) != null) {
                     break;
                 }
@@ -67,6 +105,10 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa a declaração e inicialização de uma variável.
+     * Gera código para alocação (ALME) e atribuição do valor inicial.
+     */
     private void analisarDeclaracaoVariavel() {
         String nomeVariavel = tokenAtual.lexema;
         consumirToken(TipoToken.IDENTIFICADOR);
@@ -78,13 +120,17 @@ public class AnalisadorSintatico {
         analisarExpressao();
 
         int[] info = tabelaSimbolos.obterInfoVariavel(nomeVariavel);
-        if (info[1] == 1) {
+        if (info[1] == 1) { // 1 = Local
             geradorCodigo.gerarInstrucao("AMREL", info[0]);
-        } else {
+        } else { // 0 = Global
             geradorCodigo.gerarInstrucao("ARMZ", info[0]);
         }
     }
 
+    /**
+     * Analisa a definição de uma função (def nome(params): bloco).
+     * Gerencia a criação do escopo local, desvio do fluxo principal e retorno.
+     */
     private void analisarDeclaracaoFuncao() {
         consumirToken(TipoToken.DEF);
         String nomeFuncao = tokenAtual.lexema;
@@ -111,10 +157,14 @@ public class AnalisadorSintatico {
 
         tabelaSimbolos.sairEscopoFuncao();
 
-        geradorCodigo.gerarInstrucao("RTPR");
+        geradorCodigo.gerarInstrucao("RTPR"); // Retorno de procedimento
         geradorCodigo.atualizarEnderecoDesvio(indiceDesvio, geradorCodigo.obterEnderecoAtual());
     }
 
+    /**
+     * Analisa a lista de parâmetros formais na definição de uma função.
+     * @param enderecosParams Lista para armazenar os endereços das variáveis criadas.
+     */
     private void analisarListaParametros(List<Integer> enderecosParams) {
         if (tokenAtual.tipo == TipoToken.IDENTIFICADOR) {
             String nomeVar = tokenAtual.lexema;
@@ -127,6 +177,10 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa os parâmetros subsequentes, separados por vírgula.
+     * @param enderecosParams Lista para armazenar os endereços das variáveis criadas.
+     */
     private void analisarMaisParametros(List<Integer> enderecosParams) {
         if (tokenAtual.tipo == TipoToken.VIRGULA) {
             consumirToken(TipoToken.VIRGULA);
@@ -134,11 +188,20 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa um bloco de código identado.
+     * Espera uma tabulação inicial e depois uma sequência de comandos.
+     */
     private void analisarBloco() {
         consumirToken(TipoToken.TABULACAO);
         analisarComandos(true);
     }
 
+    /**
+     * Analisa uma sequência de comandos.
+     * Lida com linhas vazias (tabulações extras) e verifica o fim do bloco.
+     * @param dentroDeBloco Indica se estamos dentro de uma estrutura identada.
+     */
     private void analisarComandos(boolean dentroDeBloco) {
         while (tokenAtual.tipo == TipoToken.TABULACAO) {
             consumirToken(TipoToken.TABULACAO);
@@ -153,6 +216,11 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa recursivamente os próximos comandos da sequência.
+     * Controla a identação para determinar se o bloco continua ou termina (dedent).
+     * @param dentroDeBloco Indica se estamos dentro de uma estrutura identada.
+     */
     private void analisarMaisComandos(boolean dentroDeBloco) {
         if (tokenAtual.tipo == TipoToken.FIM_ARQUIVO || tokenAtual.tipo == TipoToken.ELSE) {
             return;
@@ -190,6 +258,10 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa um comando individual (print, if, while, atribuição ou chamada).
+     * Desvia o fluxo para o método específico de cada comando.
+     */
     private void analisarComando() {
         if (tokenAtual.tipo == TipoToken.PRINT) {
             consumirToken(TipoToken.PRINT);
@@ -226,6 +298,11 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa o restante de uma instrução que começou com um identificador.
+     * Pode ser uma atribuição (var = expr) ou uma chamada de função (func()).
+     * @param nome O nome do identificador lido inicialmente.
+     */
     private void analisarRestoIdentificador(String nome) {
         if (tokenAtual.tipo == TipoToken.ATRIBUICAO) {
             consumirToken(TipoToken.ATRIBUICAO);
@@ -262,6 +339,12 @@ public class AnalisadorSintatico {
         }
     }
 
+    // === Expressões ===
+
+    /**
+     * Analisa uma condição relacional (ex: a > b).
+     * Gera instrução de comparação correspondente.
+     */
     private void analisarCondicao() {
         analisarExpressao();
         TipoToken operador = tokenAtual.tipo;
@@ -279,6 +362,10 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa a estrutura condicional IF / ELSE.
+     * Gera desvios condicionais (DSVF) e incondicionais (DSVI) para controle de fluxo.
+     */
     private void analisarSe() {
         consumirToken(TipoToken.IF);
         analisarCondicao();
@@ -301,6 +388,10 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa a estrutura de repetição WHILE.
+     * Salva o endereço de início para o loop e gera desvio se a condição for falsa.
+     */
     private void analisarEnquanto() {
         consumirToken(TipoToken.WHILE);
         int enderecoInicio = geradorCodigo.obterEnderecoAtual();
@@ -313,6 +404,9 @@ public class AnalisadorSintatico {
         geradorCodigo.atualizarEnderecoDesvio(endSaltoFim, geradorCodigo.obterEnderecoAtual());
     }
 
+    /**
+     * Analisa os argumentos passados em uma chamada de função.
+     */
     private void analisarArgumentos() {
         if (tokenAtual.tipo != TipoToken.PARENTESES_DIR) {
             analisarExpressao();
@@ -320,6 +414,9 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa argumentos adicionais separados por vírgula.
+     */
     private void analisarMaisArgumentos() {
         if (tokenAtual.tipo == TipoToken.VIRGULA) {
             consumirToken(TipoToken.VIRGULA);
@@ -327,6 +424,9 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa uma expressão aritmética ou um comando de entrada (input).
+     */
     private void analisarExpressao() {
         if (tokenAtual.tipo == TipoToken.INPUT) {
             consumirToken(TipoToken.INPUT);
@@ -339,6 +439,9 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa operações de soma e subtração (+, -).
+     */
     private void analisarOutrosTermos() {
         while (tokenAtual.tipo == TipoToken.SOMA || tokenAtual.tipo == TipoToken.SUBTRACAO) {
             TipoToken op = tokenAtual.tipo;
@@ -353,11 +456,17 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa um termo (fator seguido de multiplicações ou divisões).
+     */
     private void analisarTermo() {
         analisarFator();
         analisarMaisFatores();
     }
 
+    /**
+     * Analisa operações de multiplicação e divisão (*, /).
+     */
     private void analisarMaisFatores() {
         while (tokenAtual.tipo == TipoToken.MULTIPLICACAO || tokenAtual.tipo == TipoToken.DIVISAO) {
             TipoToken op = tokenAtual.tipo;
@@ -373,6 +482,9 @@ public class AnalisadorSintatico {
         }
     }
 
+    /**
+     * Analisa o fator básico de uma expressão: identificador, número ou sub-expressão entre parênteses.
+     */
     private void analisarFator() {
         if (tokenAtual.tipo == TipoToken.IDENTIFICADOR) {
             String nome = tokenAtual.lexema;
