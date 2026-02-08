@@ -11,11 +11,15 @@ public class VirtualMachine {
     private ArrayList<Double> memory;  // Memória de variáveis (D)
     private int ip;                    // Instruction Pointer (Linha atual)
     private boolean running;
+    private int fp; // Frame Pointer (Aponta para o inicio das variaveis da funcao atual)
+    private Stack<Integer> callStack; // Salva o FP antigo para restaurar depois
 
     public VirtualMachine() {
         this.stack = new Stack<>();
         this.memory = new ArrayList<>();
         this.ip = 0;
+        this.fp = 0;
+        this.callStack = new Stack<>();
     }
 
     // Carrega o arquivo gerado pelo compilador
@@ -70,23 +74,23 @@ public class VirtualMachine {
                         ip++;
                         break;
 
-                    case "CRVL": // Carrega Valor (Variavel)
-                        int addr = Integer.parseInt(parts[1]);
-                        // Ajuste de índice: O exemplo INPP começa variáveis do 1?
-                        // Vamos assumir índice 0-based da lista memory, mas se o compilador gera 1-based, subtraímos 1.
-                        // Assumindo mapeamento direto do SymbolTable (que começou em 1):
-                        stack.push(memory.get(addr - 1));
+                    case "ARMZ":
+                        int addrArmz = Integer.parseInt(parts[1]);
+                        Double valArmz = stack.pop();
+                        // CORREÇÃO: Usar 'addrArmz' direto, SEM subtrair 1
+                        // Se sua VM tiver algo como 'memory.set(addrArmz - 1, ...)', REMOVA o '- 1'.
+                        if (addrArmz >= memory.size()) {
+                            // Garante espaço se necessário (robustez)
+                            while (memory.size() <= addrArmz) memory.add(0.0);
+                        }
+                        memory.set(addrArmz, valArmz);
                         ip++;
                         break;
 
-                    case "ARMZ": // Armazena (Topo da pilha -> Memória)
-                        int targetAddr = Integer.parseInt(parts[1]);
-                        Double valueToStore = stack.pop();
-                        // Se o endereço ainda não existe (extensão dinâmica), preenchemos
-                        while (memory.size() < targetAddr) {
-                            memory.add(0.0);
-                        }
-                        memory.set(targetAddr - 1, valueToStore);
+                    case "CRVL":
+                        int addrCrvl = Integer.parseInt(parts[1]);
+                        // CORREÇÃO: Usar 'addrCrvl' direto, SEM subtrair 1
+                        stack.push(memory.get(addrCrvl));
                         ip++;
                         break;
 
@@ -186,10 +190,14 @@ public class VirtualMachine {
                         ip = Integer.parseInt(parts[1]);
                         break;
 
-                    case "RTPR": // Retorno de Procedimento
-                        // O endereço de retorno deve estar no topo da pilha (colocado pelo PUSHER antes do CHPR)
-                        // Nota: Se a função retornou valor, o endereço de retorno está ABAIXO do valor retornado.
-                        // Como sua gramática não tem 'return valor', assumimos que o topo é o endereço de retorno.
+                    case "RTPR":
+                        // 1. Limpa a memória local da função que acabou (opcional, mas bom para limpeza)
+                        while (memory.size() > fp) {
+                            memory.remove(memory.size() - 1);
+                        }
+                        // 2. Restaura o FP da função anterior
+                        fp = callStack.pop();
+                        // 3. Retorna o fluxo (IP)
                         int returnAddr = stack.pop().intValue();
                         ip = returnAddr;
                         break;
@@ -204,6 +212,30 @@ public class VirtualMachine {
                         stack.push(memory.get(paramAddr - 1));
                         ip++;
                         break;
+                    case "CREL": // Carrega Relativo (Local)
+                        int offsetLoad = Integer.parseInt(parts[1]);
+                        stack.push(memory.get(fp + offsetLoad)); // Pega do FP + deslocamento
+                        ip++;
+                        break;
+
+                    case "AMREL": // Armazena Relativo (Local)
+                        int offsetStore = Integer.parseInt(parts[1]);
+                        Double valStore = stack.pop();
+                        // Garante que a memória cresceu o suficiente
+                        while (memory.size() <= fp + offsetStore) {
+                            memory.add(0.0);
+                        }
+                        memory.set(fp + offsetStore, valStore);
+                        ip++;
+                        break;
+
+                    case "ENPR": // Entrar em Procedimento (Prepara o escopo)
+                        callStack.push(fp); // Salva o FP antigo (quem chamou)
+                        fp = memory.size(); // O novo FP é o final atual da memória
+                        ip++;
+                        break;
+
+                    // === ATUALIZAR O RTPR (IMPORTANTE) ===
 
                     default:
                         System.err.println("Instrução desconhecida: " + opCode);
