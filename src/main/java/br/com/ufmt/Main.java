@@ -1,5 +1,11 @@
 package br.com.ufmt;
 
+import br.com.ufmt.gerador.GeradorCodigo;
+import br.com.ufmt.lexico.AnalisadorLexico;
+import br.com.ufmt.semantico.TabelaSimbolos;
+import br.com.ufmt.sintatico.AnalisadorSintatico;
+import br.com.ufmt.vm.MaquinaVirtual;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -11,21 +17,20 @@ public class Main {
             System.out.println("=== INICIANDO COMPILAÇÃO ===");
 
             // 1. Leia o código fonte
-            String sourceCode = new String(Files.readAllBytes(Paths.get("codigo.txt")));
+            String codigoFonte = new String(Files.readAllBytes(Paths.get("codigo.txt")));
 
-            // 2. Inicialize as partes do compilador
-            Lexer lexer = new Lexer(sourceCode);
-            SymbolTable symbolTable = new SymbolTable();
-            CodeGenerator codeGen = new CodeGenerator();
+            // 2. Inicialize as partes do compilador (Classes Renomeadas)
+            AnalisadorLexico lexico = new AnalisadorLexico(codigoFonte);
+            TabelaSimbolos tabela = new TabelaSimbolos();
+            GeradorCodigo gerador = new GeradorCodigo();
 
-            Parser parser = new Parser(lexer, symbolTable, codeGen);
-
-            // 3. Execute o parsing
-            parser.parsePrograma();
+            // 3. Inicialize o Sintático e execute
+            AnalisadorSintatico sintatico = new AnalisadorSintatico(lexico, tabela, gerador);
+            sintatico.analisarPrograma();
 
             // 4. Salve o Código Objeto
-            String objectCode = codeGen.toString();
-            Files.write(Paths.get("codigo_objeto.txt"), objectCode.getBytes());
+            String codigoObjeto = gerador.toString();
+            Files.write(Paths.get("codigo_objeto.txt"), codigoObjeto.getBytes());
 
             System.out.println("Compilação com sucesso! Arquivo 'codigo_objeto.txt' gerado.");
             System.out.println("---------------------------------------------------------");
@@ -33,15 +38,15 @@ public class Main {
             // --- ETAPA 2: EXECUÇÃO (VM) ---
             System.out.println("=== INICIANDO MÁQUINA VIRTUAL ===");
 
-            VirtualMachine vm = new VirtualMachine();
-            vm.loadProgram("codigo_objeto.txt");
-            vm.execute();
+            MaquinaVirtual vm = new MaquinaVirtual();
+            vm.carregarPrograma("codigo_objeto.txt");
+            vm.executar();
 
         } catch (IOException e) {
             System.err.println("Erro ao ler/escrever arquivos: " + e.getMessage());
         } catch (RuntimeException e) {
             System.err.println("Erro de Compilação/Execução: " + e.getMessage());
-            e.printStackTrace(); // Descomente para debug detalhado
+            e.printStackTrace();
         }
     }
 }

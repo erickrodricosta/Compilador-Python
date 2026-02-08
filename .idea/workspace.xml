@@ -5,12 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="26d11c85-ddf9-4066-a3ba-fb433210f9e0" name="Changes" comment="correcao de bugs">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/gerador/GeradorCodigo.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/lexico/AnalisadorLexico.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/lexico/TipoToken.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/lexico/Token.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/semantico/TabelaSimbolos.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/sintatico/AnalisadorSintatico.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/vm/MaquinaVirtual.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/codigo.txt" beforeDir="false" afterPath="$PROJECT_DIR$/codigo.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Parser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Parser.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/SymbolTable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/SymbolTable.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/VirtualMachine.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/VirtualMachine.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/CodeGenerator.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Lexer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Parser.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/SymbolTable.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/Token.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/TokenType.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/ufmt/VirtualMachine.java" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -89,7 +100,7 @@
       <module name="Coompilador-Python" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="br.com.ufmt.*" />
+          <option name="PATTERN" value="br.com.ufmt.lexico.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -99,6 +110,8 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.Main" />
+        <item itemvalue="Application.Main" />
         <item itemvalue="Application.Main" />
       </list>
     </recent_temporary>
