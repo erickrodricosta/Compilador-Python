@@ -3,10 +3,7 @@ package br.com.ufmt;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Stack;
+import java.util.*;
 
 public class VirtualMachine {
     private List<String> instructions; // O código carregado
@@ -35,6 +32,8 @@ public class VirtualMachine {
 
         running = true;
         Scanner scanner = new Scanner(System.in);
+        scanner.useLocale(Locale.US);
+
         ip = 0;
 
         while (running && ip < instructions.size()) {

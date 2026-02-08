@@ -1,5 +1,9 @@
 package br.com.ufmt;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public class Parser {
     private Lexer lexer;
     private SymbolTable symbolTable;
@@ -27,7 +31,6 @@ public class Parser {
         throw new RuntimeException("Erro de Sintaxe na linha " + currentToken.line + ": " + msg);
     }
 
-    // Método auxiliar para verificar se o token atual começa um comando
     private boolean isComando(TokenType type) {
         return type == TokenType.PRINT ||
                 type == TokenType.IF ||
@@ -37,32 +40,34 @@ public class Parser {
 
     // === Regras Gramaticais: Estrutura ===
 
-    // <programa> -> <corpo>
     public void parsePrograma() {
-        codeGen.emit("INPP"); // Inicia programa
+        codeGen.emit("INPP");
         parseCorpo();
-        codeGen.emit("PARA"); // Finaliza programa
+        codeGen.emit("PARA");
     }
 
-    // <corpo> -> <dc> <comandos>
     private void parseCorpo() {
         parseDc();
-        // Contexto FALSE: Estamos no corpo principal, não exige indentação para continuar
         parseComandos(false);
     }
 
-    // <dc> -> <dc_v> <mais_dc> | <dc_f> <mais_dc_f> | λ
+    // MÉTODO CORRIGIDO
     private void parseDc() {
         while (currentToken.type == TokenType.IDENT || currentToken.type == TokenType.DEF) {
-            if (currentToken.type == TokenType.IDENT) {
-                parseDcV();
-            } else if (currentToken.type == TokenType.DEF) {
+            if (currentToken.type == TokenType.DEF) {
                 parseDcF();
+            }
+            else if (currentToken.type == TokenType.IDENT) {
+                // Se o identificador é uma função conhecida, paramos as declarações.
+                // Isso permite que o parseComandos assuma o controle para fazer a chamada.
+                if (symbolTable.getFunctionAddress(currentToken.lexeme) != null) {
+                    break;
+                }
+                parseDcV();
             }
         }
     }
 
-    // <dc_v> -> <ident> = <expressao>
     private void parseDcV() {
         String varName = currentToken.lexeme;
         eat(TokenType.IDENT);
@@ -87,9 +92,21 @@ public class Parser {
         symbolTable.addFunction(funcName, codeGen.getCurrentAddress());
 
         eat(TokenType.LPAREN);
-        parseListaPar();
+
+        // CORREÇÃO: Capturar endereços dos parâmetros
+        List<Integer> paramAddresses = new ArrayList<>();
+        parseListaPar(paramAddresses);
+
         eat(TokenType.RPAREN);
         eat(TokenType.COLON);
+
+        // CORREÇÃO: Gerar ARMZ reverso para tirar valores da pilha
+        // A pilha tem [..., arg1, arg2]. O topo é arg2.
+        // Precisamos fazer ARMZ arg2, depois ARMZ arg1.
+        Collections.reverse(paramAddresses);
+        for (Integer addr : paramAddresses) {
+            codeGen.emit("ARMZ", addr);
+        }
 
         parseBloco();
 
@@ -97,94 +114,118 @@ public class Parser {
         codeGen.patch(jumpInstructionIndex, codeGen.getCurrentAddress());
     }
 
-    // <lista_par> -> ident <mais_par>
-    private void parseListaPar() {
+    // Agora recebe a lista para preencher
+    private void parseListaPar(List<Integer> paramAddresses) {
         if (currentToken.type == TokenType.IDENT) {
             String varName = currentToken.lexeme;
             eat(TokenType.IDENT);
-            symbolTable.addVariable(varName);
-            parseMaisPar();
+
+            // Adiciona variável e guarda o endereço na lista
+            int addr = symbolTable.addVariable(varName);
+            paramAddresses.add(addr);
+
+            parseMaisPar(paramAddresses);
         }
     }
 
-    // <mais_par> -> , <lista_par> | λ
-    private void parseMaisPar() {
+    // Agora recebe a lista para repassar
+    private void parseMaisPar(List<Integer> paramAddresses) {
         if (currentToken.type == TokenType.COMMA) {
             eat(TokenType.COMMA);
-            parseListaPar();
+            parseListaPar(paramAddresses);
         }
     }
 
     // === Regras Gramaticais: Comandos e Blocos ===
 
-    // <bloco> -> tabulacao <comandos>
     private void parseBloco() {
         eat(TokenType.TAB);
-        // Contexto TRUE: Estamos dentro de um bloco, exige indentação
         parseComandos(true);
     }
 
-    // <comandos> -> <comando> <mais_comandos>
+    // Substitua este método na classe Parser.java
     private void parseComandos(boolean insideBlock) {
-        parseComando();
-        parseMaisComandos(insideBlock);
+        // NOVO LOOP: Consome linhas vazias ou de comentários (Tokens TAB soltos)
+        // antes de tentar ler o primeiro comando.
+        while (currentToken.type == TokenType.TAB) {
+            eat(TokenType.TAB);
+
+            // Se após consumir o TAB encontrarmos Fim de Arquivo ou Else,
+            // significa que o bloco era só comentários/vazio. Retornamos.
+            if (currentToken.type == TokenType.EOF || currentToken.type == TokenType.ELSE) {
+                return;
+            }
+        }
+
+        // Agora que limpamos os TABs extras, esperamos um comando real.
+        if (isComando(currentToken.type)) {
+            parseComando();
+            parseMaisComandos(insideBlock);
+        }
+        // Se não for comando (ex: fechamento de bloco sem comandos), não fazemos nada.
     }
 
-    // <mais_comandos> -> <comandos> | λ
     private void parseMaisComandos(boolean insideBlock) {
-        // 1. Critério de Parada Universal: Fim de Arquivo ou Else
+        // 1. Critério de Parada Universal
         if (currentToken.type == TokenType.EOF || currentToken.type == TokenType.ELSE) {
             return;
         }
 
-        // 2. Lógica para quando estamos DENTRO de um bloco (Função, If, While)
+        // 2. Lógica DENTRO de um bloco
         if (insideBlock) {
-            // Se houver TAB, significa que o bloco continua
+            // Se houver TAB, significa que pode vir um comando
             if (currentToken.type == TokenType.TAB) {
                 eat(TokenType.TAB);
 
-                // Verificação pós-TAB: Se for ELSE ou EOF, para.
+                // Se depois do TAB vier ELSE ou EOF, acabou.
                 if (currentToken.type == TokenType.ELSE || currentToken.type == TokenType.EOF) {
                     return;
                 }
 
-                // Se for um comando válido, continua processando recursivamente
+                // CASO NORMAL: Tem TAB e depois um Comando
                 if (isComando(currentToken.type)) {
                     parseComandos(true);
                 }
+                // CORREÇÃO CRÍTICA:
+                // Se tem TAB mas NÃO é comando (ex: encontrou outro TAB de uma linha vazia,
+                // ou o comentário consumido deixou um TAB órfão), ignoramos e tentamos de novo.
+                else if (currentToken.type == TokenType.TAB) {
+                    // Chamamos recursivamente para processar o próximo TAB sem sair do bloco
+                    parseMaisComandos(true);
+                }
+                // Se tem TAB mas vem algo que não é comando nem TAB (ex: DEF), é fim de bloco.
             }
-            // Se NÃO houver TAB (Dedent), o bloco acabou. Retorna para o nível anterior.
+            // Se NÃO houver TAB (Dedent), o bloco acabou.
             else {
                 return;
             }
         }
-        // 3. Lógica para quando estamos no MAIN (fora de bloco)
+        // 3. Lógica NO MAIN
         else {
-            // No main, não exigimos TAB. Se for comando, processa.
             if (isComando(currentToken.type)) {
                 parseComandos(false);
             }
-            // Robustez: Se houver TAB solto no main, consumimos e continuamos
             else if (currentToken.type == TokenType.TAB) {
                 eat(TokenType.TAB);
                 if (isComando(currentToken.type)) {
                     parseComandos(false);
+                } else {
+                    // Se achou TAB solto no main sem comando, ignora e continua
+                    parseMaisComandos(false);
                 }
             }
         }
     }
 
-    // <comando>
     private void parseComando() {
         if (currentToken.type == TokenType.PRINT) {
             eat(TokenType.PRINT);
             eat(TokenType.LPAREN);
-            String name = currentToken.lexeme;
-            eat(TokenType.IDENT);
-            eat(TokenType.RPAREN);
 
-            int addr = symbolTable.getVariableAddress(name);
-            codeGen.emit("CRVL", addr);
+            // Aceita expressões dentro do print (ex: print(a), print(10))
+            parseExpressao();
+
+            eat(TokenType.RPAREN);
             codeGen.emit("IMPR");
         }
         else if (currentToken.type == TokenType.IF) {
@@ -203,7 +244,6 @@ public class Parser {
         }
     }
 
-    // ident <restoIdent> -> = <expressao> | <lista_arg>
     private void parseRestoIdent(String name) {
         if (currentToken.type == TokenType.ASSIGN) {
             eat(TokenType.ASSIGN);
@@ -302,7 +342,6 @@ public class Parser {
         }
     }
 
-    // <expressao> -> <termo> <outros_termos> | input()
     private void parseExpressao() {
         if (currentToken.type == TokenType.INPUT) {
             eat(TokenType.INPUT);
