@@ -3,7 +3,7 @@
 **Autor:** Erick Rodrigues da Costa  
 **RGA:** 202211310011
 
-Este projeto é um compilador didático para um subconjunto da linguagem Python (LALG), desenvolvido em Java como **trabalho final da disciplina de Compiladores 2**.
+Este projeto é um compilador didático para um subconjunto da linguagem Python (LALG), desenvolvido em Java como **trabalho final da disciplina de Projeto de Compiladores**.
 
 O compilador foi implementado utilizando a técnica de **Análise Sintática Descendente Recursiva**, realizando as etapas de análise léxica, sintática, semântica, geração de código objeto para uma máquina hipotética de pilha e execução através de uma Máquina Virtual.
 
@@ -35,4 +35,5 @@ O código fonte está organizado nos seguintes pacotes:
 3.  Compile e execute a classe `br.com.ufmt.Main`.
 
 O compilador irá gerar o arquivo `codigo_objeto.txt` e, em seguida, a Máquina Virtual irá executá-lo automaticamente.
+
 
